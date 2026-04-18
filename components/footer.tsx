@@ -1,12 +1,20 @@
+import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
+
 export function Footer() {
   return (
-    <footer className="bg-white border-t mt-auto">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-          <p>© 2025 GameShop. 仅供学习交流使用。</p>
-          <p className="text-xs">
-            本站提供的内容均转载自网络，仅供参考。请在下载后 24 小时内删除，支持正版。
-          </p>
+    <footer className="bg-steam-dark border-t border-white/5 mt-auto hidden md:block">
+      <div className="max-w-[1200px] mx-auto px-4 py-6">
+        <div className="flex items-center justify-between text-[11px] text-steam-text-dim">
+          <div className="flex items-center gap-4">
+            <span className="text-steam-blue font-bold text-sm">GAMESHOP</span>
+            <Separator orientation="vertical" className="h-3 bg-white/10" />
+            <Link href="/" className="hover:text-steam-text transition-colors">商店</Link>
+            <Link href="/category" className="hover:text-steam-text transition-colors">分类</Link>
+            <Link href="/sign-in" className="hover:text-steam-text transition-colors">签到</Link>
+            <Link href="/vip" className="hover:text-steam-text transition-colors">VIP</Link>
+          </div>
+          <span>&copy; 2025 GameShop. 仅供学习交流使用。</span>
         </div>
       </div>
     </footer>

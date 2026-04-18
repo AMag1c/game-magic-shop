@@ -1,23 +1,124 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Gamepad2, Eye, EyeOff } from "lucide-react";
+import { Gamepad2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { fetchLogin, fetchRegister } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "sonner";
 
+// -- 密码强度计算 --
+interface StrengthInfo {
+  value: number; // 0-100
+  label: string;
+  cssColor: string; // CSS 颜色值，用于 inline style
+}
+
+function getPasswordStrength(pwd: string): StrengthInfo {
+  if (!pwd) return { value: 0, label: "", cssColor: "" };
+  if (pwd.length < 6)
+    return { value: 30, label: "弱", cssColor: "rgb(239 68 68)" }; // red-500
+  const hasUpper = /[A-Z]/.test(pwd);
+  const hasLower = /[a-z]/.test(pwd);
+  const hasNum = /\d/.test(pwd);
+  const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+  if (pwd.length >= 8 && (hasNum || hasSpecial) && hasUpper && hasLower) {
+    return { value: 100, label: "强", cssColor: "rgb(16 185 129)" }; // emerald-500
+  }
+  if (hasUpper && hasLower) {
+    return { value: 60, label: "中", cssColor: "rgb(234 179 8)" }; // yellow-500
+  }
+  return { value: 30, label: "弱", cssColor: "rgb(239 68 68)" }; // red-500
+}
+
+// -- 内联错误 --
+interface FormErrors {
+  username?: string;
+  password?: string;
+  email?: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [tab, setTab] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
 
+  // 登录表单
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
-  const [regForm, setRegForm] = useState({ username: "", password: "", email: "" });
+  const [loginShowPwd, setLoginShowPwd] = useState(false);
+  const [loginErrors, setLoginErrors] = useState<FormErrors>({});
 
+  // 注册表单
+  const [regForm, setRegForm] = useState({
+    username: "",
+    password: "",
+    email: "",
+  });
+  const [regShowPwd, setRegShowPwd] = useState(false);
+  const [regErrors, setRegErrors] = useState<FormErrors>({});
+
+  const regStrength = useMemo(
+    () => getPasswordStrength(regForm.password),
+    [regForm.password]
+  );
+
+  // -- blur 验证 --
+  const validateLoginField = useCallback(
+    (field: keyof typeof loginForm) => {
+      setLoginErrors((prev) => {
+        const next = { ...prev };
+        if (field === "username" && !loginForm.username.trim()) {
+          next.username = "请输入用户名";
+        } else if (field === "username") {
+          delete next.username;
+        }
+        if (field === "password" && !loginForm.password) {
+          next.password = "请输入密码";
+        } else if (field === "password") {
+          delete next.password;
+        }
+        return next;
+      });
+    },
+    [loginForm]
+  );
+
+  const validateRegField = useCallback(
+    (field: keyof typeof regForm) => {
+      setRegErrors((prev) => {
+        const next = { ...prev };
+        if (field === "username" && !regForm.username.trim()) {
+          next.username = "请输入用户名";
+        } else if (field === "username") {
+          delete next.username;
+        }
+        if (field === "password" && !regForm.password) {
+          next.password = "请输入密码";
+        } else if (field === "password" && regForm.password.length < 6) {
+          next.password = "密码至少 6 位";
+        } else if (field === "password") {
+          delete next.password;
+        }
+        // email 是可选字段，不做 required 校验
+        if (
+          field === "email" &&
+          regForm.email &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regForm.email)
+        ) {
+          next.email = "邮箱格式不正确";
+        } else if (field === "email") {
+          delete next.email;
+        }
+        return next;
+      });
+    },
+    [regForm]
+  );
+
+  // -- 提交 --
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginForm.username || !loginForm.password) {
@@ -26,7 +127,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const res = await fetchLogin({ username: loginForm.username, password: loginForm.password }) as any;
+      const res = (await fetchLogin({
+        username: loginForm.username,
+        password: loginForm.password,
+      })) as any;
       if (res?.token) await login(res.token);
       toast.success("登录成功");
       router.push("/");
@@ -49,9 +153,16 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await fetchRegister({ username: regForm.username, password: regForm.password, email: regForm.email || undefined });
-      // 注册成功后自动登录（后端注册接口不返回 token）
-      const loginRes = await fetchLogin({ username: regForm.username, password: regForm.password }) as any;
+      await fetchRegister({
+        username: regForm.username,
+        password: regForm.password,
+        email: regForm.email || undefined,
+      });
+      // 注册成功后自动登录
+      const loginRes = (await fetchLogin({
+        username: regForm.username,
+        password: regForm.password,
+      })) as any;
       if (loginRes?.token) await login(loginRes.token);
       toast.success("注册成功，已自动登录");
       router.push("/");
@@ -62,137 +173,248 @@ export default function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Gamepad2 className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-blue-600">GameShop</span>
-          </Link>
-          <p className="text-gray-500 mt-2 text-sm">游戏数字商城</p>
-        </div>
+  // -- 通用 input 样式 (Steam 风格) --
+  const inputCls =
+    "w-full px-3 py-2.5 border border-steam-light bg-steam-dark/60 rounded-sm text-sm text-steam-text placeholder:text-steam-text-dim focus:outline-none focus:border-steam-blue focus:ring-1 focus:ring-steam-blue transition-colors";
+  const inputErrorCls =
+    "w-full px-3 py-2.5 border border-red-500 bg-steam-dark/60 rounded-sm text-sm text-steam-text placeholder:text-steam-text-dim focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors";
 
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b">
-            <button
-              onClick={() => setTab("login")}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                tab === "login" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              登录
-            </button>
-            <button
-              onClick={() => setTab("register")}
-              className={`flex-1 py-4 text-sm font-medium transition-colors ${
-                tab === "register" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              注册
-            </button>
+  return (
+    <div className="grid lg:grid-cols-2 min-h-screen">
+      {/* ====== 左半屏 (仅 lg 以上可见) ====== */}
+      <div className="hidden lg:flex relative flex-col items-center justify-center bg-steam-dark overflow-hidden">
+        {/* 蓝色渐变装饰 */}
+        <div className="absolute top-20 -left-20 w-72 h-72 bg-steam-blue/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-56 h-56 bg-steam-blue/8 rounded-full blur-2xl" />
+        <div className="absolute top-1/3 right-1/4 w-40 h-40 bg-steam-blue/5 rounded-full blur-xl" />
+
+        <div className="relative z-10 text-center px-8">
+          <div className="w-20 h-20 bg-steam-blue rounded-sm flex items-center justify-center mx-auto mb-6">
+            <Gamepad2 className="w-10 h-10 text-steam-dark" />
+          </div>
+          <h2 className="text-3xl font-bold mb-3 text-steam-text">发现你的下一款游戏</h2>
+          <p className="text-lg text-steam-text-dim">Game Magic Shop</p>
+        </div>
+      </div>
+
+      {/* ====== 右半屏 ====== */}
+      <div className="flex items-center justify-center p-6 bg-steam-medium">
+        <div className="w-full max-w-sm">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="w-9 h-9 bg-steam-blue rounded-sm flex items-center justify-center">
+                <Gamepad2 className="w-5 h-5 text-steam-dark" />
+              </div>
+              <span className="text-xl font-bold text-steam-blue">GameShop</span>
+            </Link>
+            <p className="text-steam-text-dim mt-1.5 text-sm">游戏数字商城</p>
           </div>
 
-          <div className="p-6">
-            {tab === "login" ? (
+          {/* Tabs 登录/注册 */}
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="w-full mb-6 bg-steam-dark rounded-sm">
+              <TabsTrigger
+                value="login"
+                className="flex-1 rounded-sm data-[state=active]:bg-steam-blue data-[state=active]:text-steam-dark"
+              >
+                登录
+              </TabsTrigger>
+              <TabsTrigger
+                value="register"
+                className="flex-1 rounded-sm data-[state=active]:bg-steam-blue data-[state=active]:text-steam-dark"
+              >
+                注册
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ---- 登录表单 ---- */}
+            <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                  <label className="block text-sm font-medium text-steam-text mb-1">
+                    用户名
+                  </label>
                   <input
                     type="text"
                     value={loginForm.username}
-                    onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                    onChange={(e) =>
+                      setLoginForm({ ...loginForm, username: e.target.value })
+                    }
+                    onBlur={() => validateLoginField("username")}
                     placeholder="请输入用户名"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className={loginErrors.username ? inputErrorCls : inputCls}
                   />
+                  {loginErrors.username && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {loginErrors.username}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                  <label className="block text-sm font-medium text-steam-text mb-1">
+                    密码
+                  </label>
                   <div className="relative">
                     <input
-                      type={showPwd ? "text" : "password"}
+                      type={loginShowPwd ? "text" : "password"}
                       value={loginForm.password}
-                      onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                      onChange={(e) =>
+                        setLoginForm({ ...loginForm, password: e.target.value })
+                      }
+                      onBlur={() => validateLoginField("password")}
                       placeholder="请输入密码"
-                      className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                      className={`${loginErrors.password ? inputErrorCls : inputCls} pr-10`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPwd(!showPwd)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => setLoginShowPwd(!loginShowPwd)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-steam-text-dim hover:text-steam-text transition-colors"
                     >
-                      {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {loginShowPwd ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
+                  {loginErrors.password && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {loginErrors.password}
+                    </p>
+                  )}
                 </div>
-                <button
+                <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  className="w-full bg-steam-blue text-steam-dark hover:bg-steam-blue-hover font-semibold rounded-sm"
                 >
                   {loading ? "登录中..." : "登录"}
-                </button>
+                </Button>
               </form>
-            ) : (
+            </TabsContent>
+
+            {/* ---- 注册表单 ---- */}
+            <TabsContent value="register">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">用户名 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-steam-text mb-1">
+                    用户名 <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     value={regForm.username}
-                    onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
+                    onChange={(e) =>
+                      setRegForm({ ...regForm, username: e.target.value })
+                    }
+                    onBlur={() => validateRegField("username")}
                     placeholder="请输入用户名（3-20位）"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className={regErrors.username ? inputErrorCls : inputCls}
                   />
+                  {regErrors.username && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {regErrors.username}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">邮箱（可选）</label>
+                  <label className="block text-sm font-medium text-steam-text mb-1">
+                    邮箱（可选）
+                  </label>
                   <input
                     type="email"
                     value={regForm.email}
-                    onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
+                    onChange={(e) =>
+                      setRegForm({ ...regForm, email: e.target.value })
+                    }
+                    onBlur={() => validateRegField("email")}
                     placeholder="请输入邮箱"
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className={regErrors.email ? inputErrorCls : inputCls}
                   />
+                  {regErrors.email && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {regErrors.email}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">密码 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-steam-text mb-1">
+                    密码 <span className="text-red-500">*</span>
+                  </label>
                   <div className="relative">
                     <input
-                      type={showPwd ? "text" : "password"}
+                      type={regShowPwd ? "text" : "password"}
                       value={regForm.password}
-                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                      onChange={(e) =>
+                        setRegForm({ ...regForm, password: e.target.value })
+                      }
+                      onBlur={() => validateRegField("password")}
                       placeholder="请输入密码（至少6位）"
-                      className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                      className={`${regErrors.password ? inputErrorCls : inputCls} pr-10`}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPwd(!showPwd)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => setRegShowPwd(!regShowPwd)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-steam-text-dim hover:text-steam-text transition-colors"
                     >
-                      {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {regShowPwd ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
+                  {regErrors.password && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {regErrors.password}
+                    </p>
+                  )}
+                  {/* 密码强度条 */}
+                  {regForm.password && (
+                    <div className="mt-2 space-y-1">
+                      <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-steam-dark">
+                        <div
+                          className="h-full transition-all duration-300 rounded-full"
+                          style={{
+                            width: `${regStrength.value}%`,
+                            backgroundColor: regStrength.cssColor,
+                          }}
+                        />
+                      </div>
+                      <p
+                        className={`text-xs ${
+                          regStrength.value <= 30
+                            ? "text-red-500"
+                            : regStrength.value <= 60
+                              ? "text-yellow-500"
+                              : "text-emerald-500"
+                        }`}
+                      >
+                        密码强度：{regStrength.label}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <button
+                <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  className="w-full bg-steam-blue text-steam-dark hover:bg-steam-blue-hover font-semibold rounded-sm"
                 >
                   {loading ? "注册中..." : "注册"}
-                </button>
+                </Button>
               </form>
-            )}
+            </TabsContent>
+          </Tabs>
 
-            <div className="mt-4 text-center">
-              <Link href="/" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
-                ← 返回游戏商店
-              </Link>
-            </div>
+          {/* 返回链接 */}
+          <div className="mt-6 text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-sm text-steam-text-dim hover:text-steam-blue transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              返回游戏商店
+            </Link>
           </div>
         </div>
       </div>
