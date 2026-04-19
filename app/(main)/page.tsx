@@ -58,31 +58,31 @@ export default function HomePage() {
       {/* 浏览商城 */}
       <section className="px-4 md:px-8 py-6">
         <div className="max-w-[1100px] mx-auto">
-          <h2 className="text-sm font-medium text-steam-text uppercase tracking-wide mb-2">浏览商城</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <h2 className="text-sm font-medium text-steam-text mb-3">浏览商城</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Link
               href="/category?sort=newest"
-              className="flex items-center justify-center py-3 bg-steam-medium hover:bg-steam-light/60 rounded text-sm text-steam-text font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center py-5 bg-gradient-to-r from-steam-blue to-[#417A9B] hover:from-30% rounded-lg text-base text-white font-semibold transition-colors cursor-pointer"
             >
               新品
             </Link>
             <Link
               href="/category?sort=discount"
-              className="flex items-center justify-center py-3 bg-steam-medium hover:bg-steam-light/60 rounded text-sm text-steam-text font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center py-5 bg-gradient-to-r from-steam-blue to-[#417A9B] hover:from-30% rounded-lg text-base text-white font-semibold transition-colors cursor-pointer"
             >
               优惠
             </Link>
             <Link
               href="/category?price=free"
-              className="flex items-center justify-center py-3 bg-steam-medium hover:bg-steam-light/60 rounded text-sm text-steam-text font-medium transition-colors cursor-pointer"
+              className="flex items-center justify-center py-5 bg-gradient-to-r from-steam-blue to-[#417A9B] hover:from-30% rounded-lg text-base text-white font-semibold transition-colors cursor-pointer"
             >
               免费游戏
             </Link>
             <Link
-              href="/category"
-              className="flex items-center justify-center py-3 bg-steam-medium hover:bg-steam-light/60 rounded text-sm text-steam-text font-medium transition-colors cursor-pointer"
+              href="/category?tag=all"
+              className="flex items-center justify-center py-5 bg-gradient-to-r from-steam-blue to-[#417A9B] hover:from-30% rounded-lg text-base text-white font-semibold transition-colors cursor-pointer"
             >
-              按分类浏览
+              按用户标签
             </Link>
           </div>
         </div>
@@ -101,13 +101,13 @@ export default function HomePage() {
       </section>
 
       {/* Tab 风格游戏列表 - 内容区通栏渐变 */}
-      <section className="py-6">
+      <section className="pt-6">
         <HomeTabs games={games} isLoading={isLoading} />
       </section>
 
       {/* 会员特惠 */}
       {memberDeals.length > 0 && (
-        <section className="px-4 md:px-8 py-6">
+        <section className="bg-[#1b2838]/90 px-4 md:px-8 py-6">
           <div className="max-w-[1100px] mx-auto">
             <GameRow
               title="会员特惠"

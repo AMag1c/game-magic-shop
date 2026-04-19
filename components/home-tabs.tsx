@@ -299,7 +299,7 @@ export function HomeTabs({ games, isLoading }: HomeTabsProps) {
       </div>
 
       {/* 内容区：通栏渐变，内层限宽居中 */}
-      <div className="bg-gradient-to-b from-[#2a475e]/70 via-[#1b2838]/90 via-50% to-[#1b2838]/90 pt-2">
+      <div className="bg-gradient-to-b from-[#2a475e]/70 via-[#1b2838]/90 via-50% to-[#1b2838]/90 pt-2 pb-6">
         <div className="max-w-[1100px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3">
           {/* 左侧列表 */}
