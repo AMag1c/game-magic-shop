@@ -171,14 +171,14 @@ export function HeroCarousel({ games, isLoading }: HeroCarouselProps) {
       <button
         onClick={scrollPrev}
         className="absolute -left-[40px] top-0 h-[353px] w-[40px] flex items-center justify-center
-          hover:bg-steam-light/20 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+          hover:bg-steam-light/20 transition-colors cursor-pointer z-10"
       >
         <ChevronLeft className="w-8 h-8 text-steam-text-dim" />
       </button>
       <button
         onClick={scrollNext}
         className="absolute -right-[40px] top-0 h-[353px] w-[40px] flex items-center justify-center
-          hover:bg-steam-light/20 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 z-10"
+          hover:bg-steam-light/20 transition-colors cursor-pointer z-10"
       >
         <ChevronRight className="w-8 h-8 text-steam-text-dim" />
       </button>
