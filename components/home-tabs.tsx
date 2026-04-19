@@ -38,11 +38,11 @@ function formatDate(dateStr?: string) {
   return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
 }
 
-function DiscountBlock({ game }: { game: GameItem }) {
+function DiscountBlock({ game, selected }: { game: GameItem; selected?: boolean }) {
   const pct = getDiscount(game);
   if (game.price === 0) {
     return (
-      <span className="text-[16px] text-steam-blue font-medium">免费</span>
+      <span className={cn("text-[16px] font-medium", selected ? "text-black" : "text-steam-blue")}>免费</span>
     );
   }
   if (pct > 0) {
@@ -59,8 +59,11 @@ function DiscountBlock({ game }: { game: GameItem }) {
             {game.originalPrice}
             <Coins className="w-3 h-3" />
           </div>
-          {/* 现价：绿色、加粗、大字 */}
-          <div className="text-[16px] leading-none text-steam-sale font-medium whitespace-nowrap inline-flex items-center gap-0.5">
+          {/* 现价：selected 时黑色，否则黄绿色 */}
+          <div className={cn(
+            "text-[16px] leading-none font-medium whitespace-nowrap inline-flex items-center gap-0.5",
+            selected ? "text-black" : "text-steam-sale"
+          )}>
             {game.price}
             <Coins className="w-4 h-4" />
           </div>
@@ -69,7 +72,10 @@ function DiscountBlock({ game }: { game: GameItem }) {
     );
   }
   return (
-    <span className="text-[16px] text-white font-medium inline-flex items-center gap-0.5">
+    <span className={cn(
+      "text-[16px] font-medium inline-flex items-center gap-0.5",
+      selected ? "text-black" : "text-white"
+    )}>
       {game.price}
       <Coins className="w-4 h-4" />
     </span>
@@ -92,10 +98,7 @@ function TabItemRow({
       onMouseEnter={onHover}
       onFocus={onHover}
       className={cn(
-        "flex h-[96px] overflow-hidden transition-colors cursor-pointer group",
-        selected
-          ? "bg-steam-light/70"
-          : "hover:bg-steam-light/40"
+        "flex h-[96px] overflow-hidden transition-colors cursor-pointer group mb-1"
       )}
     >
       {/* 封面：宽 184px,高度随卡片铺满 */}
@@ -110,10 +113,16 @@ function TabItemRow({
       </div>
 
       {/* 右侧内容:紧凑内边距,撑满卡片高度 */}
-      <div className="flex-1 min-w-0 flex gap-2 px-3 py-2">
+      <div className={cn(
+        "flex-1 min-w-0 flex gap-2 px-3 py-2 transition-colors",
+        selected ? "bg-[#c7d5e0]" : "bg-steam-medium"
+      )}>
         {/* 中列:游戏名 / 平台 / 标签 紧密堆叠,整体垂直居中 */}
         <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
-          <div className="text-[18px] leading-tight text-steam-text font-medium truncate group-hover:text-white transition-colors">
+          <div className={cn(
+            "text-[15px] leading-tight font-medium truncate transition-colors",
+            selected ? "text-black" : "text-steam-text group-hover:text-white"
+          )}>
             {game.name}
           </div>
           <svg className="w-4 h-4 text-steam-text-dim" viewBox="0 0 24 24" fill="currentColor">
@@ -129,7 +138,7 @@ function TabItemRow({
         {/* 右列:价格在除日期外的剩余空间内居中,日期贴右下 */}
         <div className="flex-shrink-0 w-[120px] flex flex-col items-end">
           <div className="flex-1 flex items-center">
-            <DiscountBlock game={game} />
+            <DiscountBlock game={game} selected={selected} />
           </div>
           {game.releaseDate && (
             <div className="text-[11px] leading-tight text-steam-text-dim whitespace-nowrap">
@@ -246,7 +255,7 @@ export function HomeTabs({ games, isLoading }: HomeTabsProps) {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="max-w-[1100px] mx-auto">
         <div className="flex gap-1 mb-3">
           {TABS.map((t) => <Skeleton key={t.key} className="h-8 w-28" />)}
         </div>
@@ -264,32 +273,35 @@ export function HomeTabs({ games, isLoading }: HomeTabsProps) {
 
   return (
     <div>
-      {/* Tab 导航 */}
-      <div className="flex flex-wrap gap-px bg-steam-dark/40 rounded-t overflow-hidden mb-0">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            onClick={() => {
-              setActiveTab(tab.key);
-              setPreviewId(null);
-            }}
-            className={cn(
-              "px-4 py-2 text-[13px] font-medium transition-colors cursor-pointer",
-              activeTab === tab.key
-                ? "bg-steam-light/70 text-white border-b-2 border-steam-blue"
-                : "bg-steam-medium/60 text-steam-text-dim hover:text-steam-text hover:bg-steam-medium"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Tab 导航：居中限宽 */}
+      <div className="max-w-[1100px] mx-auto">
+        <div className="flex flex-wrap gap-px mb-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setPreviewId(null);
+              }}
+              className={cn(
+                "px-4 py-2 text-[13px] font-medium transition-colors cursor-pointer",
+                activeTab === tab.key
+                  ? "bg-steam-light/70 text-white rounded-t"
+                  : "text-steam-text-dim hover:text-steam-text"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 内容区:左侧列表 + 右侧预览,两列无间距,右侧背景与选中卡片一致,视觉连续 */}
-      <div className="bg-steam-dark/20 rounded-b overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-3">
+      {/* 内容区：通栏渐变，内层限宽居中 */}
+      <div className="bg-gradient-to-b from-[#2a475e]/70 via-[#1b2838]/90 via-50% to-[#1b2838]/90 pt-2">
+        <div className="max-w-[1100px] mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3">
           {/* 左侧列表 */}
           <div className="lg:col-span-2">
             {tabGames.length > 0 ? (
@@ -306,7 +318,7 @@ export function HomeTabs({ games, isLoading }: HomeTabsProps) {
                 </div>
 
                 {/* 查看更多 */}
-                <div className="flex items-center gap-2 mt-3 px-2">
+                <div className="flex items-center justify-end gap-2 p-2">
                   <span className="text-[11px] text-steam-text-dim">查看更多:</span>
                   <Link
                     href={activeTabInfo.viewAllHref}
@@ -327,6 +339,7 @@ export function HomeTabs({ games, isLoading }: HomeTabsProps) {
           <div className="hidden lg:block bg-steam-light/70">
             {previewGame && <RightPreview game={previewGame} />}
           </div>
+        </div>
         </div>
       </div>
     </div>
